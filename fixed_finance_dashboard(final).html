@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人理财规划仪表盘</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        /* 基本样式 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+
+        .subtitle {
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        /* 导航样式 */
+        nav {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 30px;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 12px 25px;
+            border: none;
+            background-color: #fff;
+            color: #666;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-btn:hover {
+            background-color: #4ecdc4;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+        }
+
+        .nav-btn.active {
+            background-color: #4ecdc4;
+            color: white;
+        }
+
+        /* 页面样式 */
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        /* 工具栏样式 */
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .toolbar-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        #export-excel {
+            background-color: #45b7d1;
+            color: white;
+        }
+
+        #export-excel:hover {
+            background-color: #3a9bc1;
+        }
+
+        #clear-data {
+            background-color: #ff6b6b;
+            color: white;
+        }
+
+        #clear-data:hover {
+            background-color: #ff5252;
+        }
+
+        #save-settings {
+            background-color: #4ecdc4;
+            color: white;
+        }
+
+        #save-settings:hover {
+            background-color: #45b7aa;
+        }
+
+        #reset-defaults {
+            background-color: #ffa726;
+            color: white;
+        }
+
+        #reset-defaults:hover {
+            background-color: #ff9800;
+        }
+
+        .controls-group {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .year-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .year-selector label {
+            font-weight: bold;
+            color: #666;
+        }
+
+        .year-selector input {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 80px;
+        }
+
+        .ratio-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ratio-controls > label {
+            font-weight: bold;
+            color: #666;
+            font-size: 16px;
+        }
+
+        .ratio-inputs {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .ratio-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 16px;
+        }
+
+        .ratio-item label {
+            color: #666;
+            font-weight: 500;
+            min-width: 35px;
+        }
+
+        .ratio-item input {
+            width: 50px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        .ratio-item input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+        }
+
+        .ratio-item span {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .ratio-total {
+            margin-left: 10px;
+            padding-left: 10px;
+            border-left: 1px solid #ddd;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .ratio-total.error {
+            color: #ff6b6b;
+        }
+
+        .ratio-total.success {
+            color: #4ecdc4;
+        }
+
+        /* 汇总容器样式 */
+        .summary-container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .summary-table {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .summary-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .summary-table th,
+        .summary-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .summary-table tfoot td {
+            font-weight: bold;
+            border-top: 2px solid #4ecdc4;
+            background-color: #f0f9f9;
+        }
+
+        .summary-chart {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .summary-chart canvas {
+            max-height: 300px;
+        }
+
+        /* 详情容器样式 */
+        .details-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .category-table {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s ease;
+        }
+
+        .category-table:hover {
+            transform: translateY(-2px);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-header h3 {
+            margin: 0;
+            font-size: 1.2em;
+            font-weight: 500;
+        }
+
+        .table-body {
+            padding: 20px;
+        }
+
+        .table-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .table-row input {
+            flex: 2;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            min-width: 0;
+        }
+
+        .table-row input[type="number"] {
+            flex: 1; /* 数字框占较少空间 */
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            min-width: 80px; /* 设置最小宽度确保数字可见 */
+        }
+
+        .table-row input:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.1);
+        }
+
+        .table-footer {
+            padding: 15px 20px;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            border-top: 1px solid #eee;
+        }
+
+        .add-item-btn {
+            width: 100%;
+            padding: 12px;
+            border: 2px dashed #ddd;
+            background-color: transparent;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #666;
+            transition: all 0.3s ease;
+        }
+        
+        .add-item-btn:hover {
+            border-color: #4ecdc4;
+            color: #4ecdc4;
+            background-color: #f0f9f9;
+        }
+
+        /* 消息框样式 */
+        .message-box {
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-weight: 500;
+        }
+
+        .message-box.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message-box.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message-box.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* 颜色类 */
+        .positive {
+            color: #4ecdc4 !important;
+            font-weight: bold;
+        }
+        
+        .negative {
+            color: #ff6b6b !important;
+            font-weight: bold;
+        }
+        
+        .balanced {
+            color: #45b7d1 !important;
+            font-weight: bold;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .summary-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .details-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .toolbar-buttons {
+                justify-content: center;
+            }
+            
+            .nav-btn {
+                flex: 1;
+                min-width: 0;
+            }
+        }
+
+        /* 配置页面样式 */
+        #config {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            line-height: 1.8;
+        }
+
+        #config h2 {
+            color: #4ecdc4;
+            border-bottom: 2px solid #4ecdc4;
+            padding-bottom: 10px;
+            margin-bottom: 25px;
+        }
+
+        #config h3 {
+            color: #666;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        #config p {
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        #config ol {
+            color: #555;
+            padding-left: 25px;
+        }
+
+        #config li {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>个人理财规划仪表盘</h1>
+            <p class="subtitle">一个帮助你实践"精明消费"的工具</p>
+        </header>
+
+        <nav>
+            <button class="nav-btn active" data-target="dashboard">50-30-20理财规划</button>
+            <button class="nav-btn" data-target="config">50-30-20法则说明</button>
+        </nav>
+
+        <main>
+            <section id="dashboard" class="page active">
+                <div class="toolbar">
+                    <div class="toolbar-buttons">
+                        <button id="export-excel">导出为 Excel</button>
+                        <button id="clear-data">一键清除预设数据</button>
+                        <button id="reset-defaults">恢复默认设置</button>
+                        <button id="save-settings">保存设置</button>
+                    </div>
+                    <div class="controls-group">
+                        <div class="year-selector">
+                            <label for="year">年份:</label>
+                            <input type="number" id="year" value="2025">
+                        </div>
+                        <div class="ratio-controls">
+                            <label>分配比例:</label>
+                            <div class="ratio-inputs">
+                                <div class="ratio-item">
+                                    <label for="needs-ratio">必需</label>
+                                    <input type="number" id="needs-ratio" value="50" min="0" max="100">
+                                    <span>%</span>
+                                </div>
+                                <div class="ratio-item">
+                                    <label for="wants-ratio">想要</label>
+                                    <input type="number" id="wants-ratio" value="30" min="0" max="100">
+                                    <span>%</span>
+                                </div>
+                                <div class="ratio-item">
+                                    <label for="savings-ratio">储蓄</label>
+                                    <input type="number" id="savings-ratio" value="20" min="0" max="100">
+                                    <span>%</span>
+                                </div>
+                                <div class="ratio-total">
+                                    <span>总计: </span>
+                                    <span id="ratio-total-value">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="config-message" class="message-box" style="display:none;"></div>
+
+                <div class="summary-container">
+                    <div class="summary-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>理想分配金额</th>
+                                    <th>目标</th>
+                                    <th>实际</th>
+                                    <th>总支出</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>生活必需</strong></td>
+                                    <td id="ideal-needs">¥0.00</td>
+                                    <td><span id="needs-target-percent">50%</span></td>
+                                    <td id="actual-needs-perc"></td>
+                                    <td id="total-needs">¥0.00</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>储蓄与投资</strong></td>
+                                    <td id="ideal-savings">¥0.00</td>
+                                    <td><span id="savings-target-percent">20%</span></td>
+                                    <td id="actual-savings-perc"></td>
+                                    <td id="total-savings">¥0.00</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>想要</strong></td>
+                                    <td id="ideal-wants">¥0.00</td>
+                                    <td><span id="wants-target-percent">30%</span></td>
+                                    <td id="actual-wants-perc"></td>
+                                    <td id="total-wants">¥0.00</td>
+                                </tr>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4"><strong>总支出</strong></td>
+                                    <td id="total-spend">¥0.00</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <div class="message-box">
+                            <p id="allocation-message"></p>
+                        </div>
+                    </div>
+                    <div class="summary-chart">
+                        <canvas id="spending-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="details-container">
+                    <div class="category-table" id="income-table">
+                        <div class="table-header"><h3>收入</h3></div>
+                        <div class="table-body">
+                            <div class="table-row"><input type="text" value="主要工作"><input type="number" class="input-income" value="2200"></div>
+                            <div class="table-row"><input type="text" value="遛狗"><input type="number" class="input-income" value="100"></div>
+                            <div class="table-row"><input type="text" value="租金"><input type="number" class="input-income" value="500"></div>
+                            <div class="table-row"><button class="add-item-btn">+ 添加新项</button></div>
+                        </div>
+                        <div class="table-footer">
+                            <span><strong>总计</strong></span>
+                            <span id="total-income">¥2800.00</span>
+                        </div>
+                    </div>
+
+                    <div class="category-table" id="needs-table">
+                        <div class="table-header"><h3>生活必需</h3><span id="needs-status"></span></div>
+                        <div class="table-body">
+                            <div class="table-row"><input type="text" value="房租/房贷"><input type="number" class="input-needs" value="800"></div>
+                            <div class="table-row"><input type="text" value="食品杂货"><input type="number" class="input-needs" value="290"></div>
+                            <div class="table-row"><input type="text" value="保险（健康、家庭、汽车等）"><input type="number" class="input-needs" value="100"></div>
+                            <div class="table-row"><input type="text" value="汽车贷款"><input type="number" class="input-needs" value="150"></div>
+                            <div class="table-row"><input type="text" value="汽油/交通费"><input type="number" class="input-needs" value="70"></div>
+                            <div class="table-row"><input type="text" value="最低债务偿还"><input type="number" class="input-needs" value="60"></div>
+                            <div class="table-row"><input type="text" value="手机账单"><input type="number" class="input-needs" value="20"></div>
+                            <div class="table-row"><input type="text" value="网络"><input type="number" class="input-needs" value="40"></div>
+                            <div class="table-row"><button class="add-item-btn">+ 添加新项</button></div>
+                        </div>
+                        <div class="table-footer">
+                            <span><strong>超支</strong></span>
+                            <span id="needs-overspent">¥-240.00</span>
+                        </div>
+                    </div>
+
+                    <div class="category-table" id="savings-table">
+                        <div class="table-header"><h3>储蓄与投资</h3></div>
+                        <div class="table-body">
+                            <div class="table-row"><input type="text" value="应急基金"><input type="number" class="input-savings" value="220"></div>
+                            <div class="table-row"><input type="text" value="投资账户"><input type="number" class="input-savings" value="0"></div>
+                            <div class="table-row"><input type="text" value="工作退休金"><input type="number" class="input-savings" value="100"></div>
+                            <div class="table-row"><input type="text" value="额外债务偿还"><input type="number" class="input-savings" value="0"></div>
+                            <div class="table-row"><input type="text" value="首付"><input type="number" class="input-savings" value="0"></div>
+                            <div class="table-row"><button class="add-item-btn">+ 添加新项</button></div>
+                        </div>
+                        <div class="table-footer">
+                            <span><strong>待分配</strong></span>
+                            <span id="savings-left">¥240.00</span>
+                        </div>
+                    </div>
+
+                    <div class="category-table" id="wants-table">
+                        <div class="table-header"><h3>想要</h3></div>
+                        <div class="table-body">
+                            <div class="table-row"><input type="text" value="衣服"><input type="number" class="input-wants" value="200"></div>
+                            <div class="table-row"><input type="text" value="外出就餐"><input type="number" class="input-wants" value="300"></div>
+                            <div class="table-row"><input type="text" value="旅行"><input type="number" class="input-wants" value="0"></div>
+                            <div class="table-row"><input type="text" value="个人护理"><input type="number" class="input-wants" value="150"></div>
+                            <div class="table-row"><input type="text" value="订阅"><input type="number" class="input-wants" value="40"></div>
+                            <div class="table-row"><input type="text" value="捐赠"><input type="number" class="input-wants" value="50"></div>
+                            <div class="table-row"><input type="text" value="咖啡"><input type="number" class="input-wants" value="80"></div>
+                            <div class="table-row"><input type="text" value="杂项"><input type="number" class="input-wants" value="20"></div>
+                            <div class="table-row"><button class="add-item-btn">+ 添加新项</button></div>
+                        </div>
+                        <div class="table-footer">
+                            <span><strong>可用支出</strong></span>
+                            <span id="wants-available">¥0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="config" class="page">
+                <h2>50-30-20法则说明页</h2>
+                <p>50/30/20法则是一项预算指导原则，建议将收入的50%用于必需品，30%用于非必需品，20%用于储蓄和投资。其核心不在于严格遵守比例，而是通过了解当前开支状况来寻找优化空间。即使是小幅增加储蓄比例，也能对长期财务目标产生显著影响。</p>
+                <p>若您的支出比例与50/30/20不符，这完全正常。每个人的生活境况不同，重点在于逐步改善而非追求完美。通过调整开支——比如减少外出就餐或协商账单——即使最初只能腾出5%-10%的资金，也能逐步实现预算平衡并为储蓄创造空间。</p>
+                <p>对于非常规或意外支出，可通过两种方式提前规划：将可预见的开支均摊到月度预算中，或使用应急基金支付真正的突发支出。关键在于保持清醒认知——通过真实消费数据了解资金流向，从而做出符合财务目标的理性决策。</p>
+                <h3>表格工作原理：</h3>
+                <ol>
+                    <li>根据不同的收入来源列出你的收入</li>
+                    <li>列出当月开支（必需品、非必需品及储蓄）</li>
+                    <li>对照目标检查实际支出情况</li>
+                </ol>
+            </section>
+        </main>
+    </div>
+
+    <script>
+// 个人理财规划仪表盘 JavaScript
+var FinanceDashboard = function() {
+    var self = this;
+    this.chart = null;
+    this.eventsInitialized = false; // 防止重复绑定事件
+
+    // 默认数据
+    this.defaultData = {
+        year: '2025',
+        ratios: {
+            needs: 50,
+            wants: 30,
+            savings: 20
+        },
+        income: [
+            { text: '主要工作', number: '2200' },
+            { text: '遛狗', number: '100' },
+            { text: '租金', number: '500' }
+        ],
+        needs: [
+            { text: '房租/房贷', number: '800' },
+            { text: '食品杂货', number: '290' },
+            { text: '保险（健康、家庭、汽车等）', number: '100' },
+            { text: '汽车贷款', number: '150' },
+            { text: '汽油/交通费', number: '70' },
+            { text: '最低债务偿还', number: '60' },
+            { text: '手机账单', number: '20' },
+            { text: '网络', number: '40' }
+        ],
+        savings: [
+            { text: '应急基金', number: '220' },
+            { text: '投资账户', number: '0' },
+            { text: '工作退休金', number: '100' },
+            { text: '额外债务偿还', number: '0' },
+            { text: '首付', number: '0' }
+        ],
+        wants: [
+            { text: '衣服', number: '200' },
+            { text: '外出就餐', number: '300' },
+            { text: '旅行', number: '0' },
+            { text: '个人护理', number: '150' },
+            { text: '订阅', number: '40' },
+            { text: '捐赠', number: '50' },
+            { text: '咖啡', number: '80' },
+            { text: '杂项', number: '20' }
+        ]
+    };
+
+    // 初始化函数
+    this.init = function() {
+        console.log('正在初始化理财仪表盘...');
+        
+        if (!this.eventsInitialized) {
+            this.bindEvents();
+            this.eventsInitialized = true;
+        }
+        
+        this.loadSettings();
+        this.updateCalculations();
+        
+        // 延迟初始化图表，确保DOM完全加载
+        setTimeout(function() {
+            self.initChart();
+        }, 100);
+    };
+
+    // 绑定事件
+    this.bindEvents = function() {
+        console.log('绑定事件...');
+        
+        // 导航切换
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var i = 0; i < navBtns.length; i++) {
+            navBtns[i].addEventListener('click', function(e) {
+                self.switchTab(e.target.dataset.target);
+            });
+        }
+
+        // 工具栏按钮
+        var exportBtn = document.getElementById('export-excel');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', function() {
+                self.exportToExcel();
+            });
+        }
+        
+        var clearBtn = document.getElementById('clear-data');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                self.clearData();
+            });
+        }
+        
+        var resetBtn = document.getElementById('reset-defaults');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                self.resetToDefaults();
+            });
+        }
+        
+        var saveBtn = document.getElementById('save-settings');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                self.saveSettings();
+            });
+        }
+
+        // 年份输入
+        var yearInput = document.getElementById('year');
+        if (yearInput) {
+            yearInput.addEventListener('input', function() {
+                self.saveSettings();
+            });
+        }
+
+        // 比例输入
+        var needsRatioInput = document.getElementById('needs-ratio');
+        var wantsRatioInput = document.getElementById('wants-ratio');
+        var savingsRatioInput = document.getElementById('savings-ratio');
+
+        if (needsRatioInput) {
+            needsRatioInput.addEventListener('input', function() {
+                self.updateRatioTotal();
+                self.updateCalculations();
+                self.updateChart();
+                self.saveSettings();
+            });
+        }
+
+        if (wantsRatioInput) {
+            wantsRatioInput.addEventListener('input', function() {
+                self.updateRatioTotal();
+                self.updateCalculations();
+                self.updateChart();
+                self.saveSettings();
+            });
+        }
+
+        if (savingsRatioInput) {
+            savingsRatioInput.addEventListener('input', function() {
+                self.updateRatioTotal();
+                self.updateCalculations();
+                self.updateChart();
+                self.saveSettings();
+            });
+        }
+
+        // 绑定现有输入框事件
+        this.bindInputEvents();
+    };
+
+    // 绑定输入框事件（使用事件委托避免重复绑定）
+    this.bindInputEvents = function() {
+        // 移除之前的事件监听器（如果存在）
+        document.removeEventListener('input', this.handleNumberInput);
+        document.removeEventListener('blur', this.handleTextBlur);
+        document.removeEventListener('click', this.handleAddButtonClick);
+
+        // 使用事件委托绑定输入事件
+        document.addEventListener('input', this.handleNumberInput = function(e) {
+            if (e.target.type === 'number') {
+                self.updateCalculations();
+                self.updateChart();
+            }
+        });
+
+        document.addEventListener('blur', this.handleTextBlur = function(e) {
+            if (e.target.type === 'text') {
+                self.saveSettings();
+            }
+        });
+
+        document.addEventListener('click', this.handleAddButtonClick = function(e) {
+            if (e.target.classList.contains('add-item-btn')) {
+                self.handleAddNewItem(e.target);
+            }
+        });
+    };
+
+    // 处理添加新项功能
+    this.handleAddNewItem = function(button) {
+        var tableBody = button.closest('.table-body');
+        var newRow = this.createNewRow(button);
+        
+        // 在按钮前插入新行
+        tableBody.insertBefore(newRow, button.parentNode);
+        
+        // 聚焦到新行的文本输入框
+        var textInput = newRow.querySelector('input[type="text"]');
+        if (textInput) {
+            textInput.focus();
+        }
+        
+        // 更新计算
+        this.updateCalculations();
+        this.updateChart();
+    };
+
+    // 创建新行
+    this.createNewRow = function(templateButton) {
+        var newRow = document.createElement('div');
+        newRow.className = 'table-row';
+        
+        // 创建文本输入框
+        var textInput = document.createElement('input');
+        textInput.type = 'text';
+        textInput.placeholder = '输入项目名称';
+        textInput.value = '';
+        
+        // 创建数值输入框
+        var numberInput = document.createElement('input');
+        numberInput.type = 'number';
+        numberInput.placeholder = '0';
+        numberInput.value = '';
+        
+        // 确定数值输入框的类别
+        var tableId = templateButton.closest('.category-table').id;
+        if (tableId === 'income-table') {
+            numberInput.className = 'input-income';
+        } else if (tableId === 'needs-table') {
+            numberInput.className = 'input-needs';
+        } else if (tableId === 'savings-table') {
+            numberInput.className = 'input-savings';
+        } else if (tableId === 'wants-table') {
+            numberInput.className = 'input-wants';
+        }
+        
+        newRow.appendChild(textInput);
+        newRow.appendChild(numberInput);
+        
+        return newRow;
+    };
+
+    // 切换标签页
+    this.switchTab = function(target) {
+        console.log('切换到标签页:', target);
+        
+        // 更新导航按钮状态
+        var navBtns = document.querySelectorAll('.nav-btn');
+        for (var i = 0; i < navBtns.length; i++) {
+            navBtns[i].classList.remove('active');
+        }
+        var activeBtn = document.querySelector('[data-target="' + target + '"]');
+        if (activeBtn) {
+            activeBtn.classList.add('active');
+        }
+
+        // 切换页面显示
+        var pages = document.querySelectorAll('.page');
+        for (var i = 0; i < pages.length; i++) {
+            pages[i].classList.remove('active');
+        }
+        var targetPage = document.getElementById(target);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+    };
+
+    // 计算收入总计
+    this.calculateIncome = function() {
+        var incomeInputs = document.querySelectorAll('.input-income');
+        var total = 0;
+        for (var i = 0; i < incomeInputs.length; i++) {
+            var value = parseFloat(incomeInputs[i].value) || 0;
+            total += value;
+        }
+        return total;
+    };
+
+    // 计算生活必需总计
+    this.calculateNeeds = function() {
+        var needsInputs = document.querySelectorAll('.input-needs');
+        var total = 0;
+        for (var i = 0; i < needsInputs.length; i++) {
+            var value = parseFloat(needsInputs[i].value) || 0;
+            total += value;
+        }
+        return total;
+    };
+
+    // 计算储蓄与投资总计
+    this.calculateSavings = function() {
+        var savingsInputs = document.querySelectorAll('.input-savings');
+        var total = 0;
+        for (var i = 0; i < savingsInputs.length; i++) {
+            var value = parseFloat(savingsInputs[i].value) || 0;
+            total += value;
+        }
+        return total;
+    };
+
+    // 计算想要总计
+    this.calculateWants = function() {
+        var wantsInputs = document.querySelectorAll('.input-wants');
+        var total = 0;
+        for (var i = 0; i < wantsInputs.length; i++) {
+            var value = parseFloat(wantsInputs[i].value) || 0;
+            total += value;
+        }
+        return total;
+    };
+
+    // 获取当前比例设置
+    this.getRatios = function() {
+        var needsRatio = parseFloat(document.getElementById('needs-ratio').value) || 50;
+        var wantsRatio = parseFloat(document.getElementById('wants-ratio').value) || 30;
+        var savingsRatio = parseFloat(document.getElementById('savings-ratio').value) || 20;
+        
+        return {
+            needs: needsRatio / 100,
+            wants: wantsRatio / 100,
+            savings: savingsRatio / 100
+        };
+    };
+
+    // 更新比例总计显示
+    this.updateRatioTotal = function() {
+        var needsRatio = parseFloat(document.getElementById('needs-ratio').value) || 0;
+        var wantsRatio = parseFloat(document.getElementById('wants-ratio').value) || 0;
+        var savingsRatio = parseFloat(document.getElementById('savings-ratio').value) || 0;
+        
+        var total = needsRatio + wantsRatio + savingsRatio;
+        var totalElement = document.getElementById('ratio-total-value');
+        
+        if (totalElement) {
+            totalElement.textContent = total.toFixed(0) + '%';
+            
+            // 根据总和设置颜色
+            var parentElement = totalElement.parentElement;
+            parentElement.classList.remove('error', 'success');
+            
+            if (total === 100) {
+                parentElement.classList.add('success');
+            } else {
+                parentElement.classList.add('error');
+            }
+        }
+        
+        // 更新表格中的目标百分比显示
+        this.updateElement('needs-target-percent', needsRatio.toFixed(0) + '%');
+        this.updateElement('wants-target-percent', wantsRatio.toFixed(0) + '%');
+        this.updateElement('savings-target-percent', savingsRatio.toFixed(0) + '%');
+    };
+
+    // 更新所有计算
+    this.updateCalculations = function() {
+        var totalIncome = self.calculateIncome();
+        var totalNeeds = self.calculateNeeds();
+        var totalSavings = self.calculateSavings();
+        var totalWants = self.calculateWants();
+        var totalSpend = totalNeeds + totalSavings + totalWants;
+
+        // 获取当前比例设置
+        var ratios = this.getRatios();
+
+        // 理想分配（使用自定义比例）
+        var idealNeeds = totalIncome * ratios.needs;
+        var idealSavings = totalIncome * ratios.savings;
+        var idealWants = totalIncome * ratios.wants;
+
+        // 实际百分比
+        var actualNeedsPerc = totalIncome > 0 ? ((totalNeeds / totalIncome) * 100).toFixed(1) + '%' : '0%';
+        var actualSavingsPerc = totalIncome > 0 ? ((totalSavings / totalIncome) * 100).toFixed(1) + '%' : '0%';
+        var actualWantsPerc = totalIncome > 0 ? ((totalWants / totalIncome) * 100).toFixed(1) + '%' : '0%';
+
+        // 更新汇总表格
+        this.updateElement('total-income', '¥' + totalIncome.toFixed(2));
+        this.updateElement('ideal-needs', '¥' + idealNeeds.toFixed(2));
+        this.updateElement('ideal-savings', '¥' + idealSavings.toFixed(2));
+        this.updateElement('ideal-wants', '¥' + idealWants.toFixed(2));
+        this.updateElement('actual-needs-perc', actualNeedsPerc);
+        this.updateElement('actual-savings-perc', actualSavingsPerc);
+        this.updateElement('actual-wants-perc', actualWantsPerc);
+        this.updateElement('total-needs', '¥' + totalNeeds.toFixed(2));
+        this.updateElement('total-savings', '¥' + totalSavings.toFixed(2));
+        this.updateElement('total-wants', '¥' + totalWants.toFixed(2));
+        this.updateElement('total-spend', '¥' + totalSpend.toFixed(2));
+
+        // 更新各类别的剩余/超支
+        var needsOverspent = totalNeeds - idealNeeds;
+        var savingsLeft = idealSavings - totalSavings;
+        var wantsAvailable = idealWants - totalWants;
+
+        this.updateElement('needs-overspent', '¥' + needsOverspent.toFixed(2));
+        this.updateElement('savings-left', '¥' + savingsLeft.toFixed(2));
+        this.updateElement('wants-available', '¥' + wantsAvailable.toFixed(2));
+
+        // 更新状态颜色
+        this.updateStatusColors(needsOverspent, savingsLeft, wantsAvailable);
+
+        // 更新分配消息
+        this.updateAllocationMessage(totalIncome, totalSpend);
+        
+        // 更新比例总计
+        this.updateRatioTotal();
+    };
+
+    // 安全更新元素内容
+    this.updateElement = function(id, text) {
+        var element = document.getElementById(id);
+        if (element) {
+            element.textContent = text;
+        }
+    };
+
+    // 更新状态颜色
+    this.updateStatusColors = function(needsOverspent, savingsLeft, wantsAvailable) {
+        var needsFooter = document.querySelector('#needs-table .table-footer span:last-child');
+        var savingsFooter = document.querySelector('#savings-table .table-footer span:last-child');
+        var wantsFooter = document.querySelector('#wants-table .table-footer span:last-child');
+
+        // 重置颜色类
+        if (needsFooter) {
+            needsFooter.classList.remove('positive', 'negative');
+        }
+        if (savingsFooter) {
+            savingsFooter.classList.remove('positive', 'negative');
+        }
+        if (wantsFooter) {
+            wantsFooter.classList.remove('positive', 'negative');
+        }
+
+        // 生活必需：超支为正数（红色），不超支为负数（绿色）
+        if (needsFooter) {
+            if (needsOverspent > 0) {
+                needsFooter.classList.add('negative');
+            } else {
+                needsFooter.classList.add('positive');
+            }
+        }
+
+        // 储蓄：还有余额为正数（绿色），无余额为负数（红色）
+        if (savingsFooter) {
+            if (savingsLeft > 0) {
+                savingsFooter.classList.add('positive');
+            } else {
+                savingsFooter.classList.add('negative');
+            }
+        }
+
+        // 想要：还有可用为正数（绿色），超支为负数（红色）
+        if (wantsFooter) {
+            if (wantsAvailable > 0) {
+                wantsFooter.classList.add('positive');
+            } else {
+                wantsFooter.classList.add('negative');
+            }
+        }
+    };
+
+    // 更新分配消息
+    this.updateAllocationMessage = function(totalIncome, totalSpend) {
+        var messageEl = document.getElementById('allocation-message');
+        if (!messageEl) return;
+        
+        var remaining = totalIncome - totalSpend;
+
+        if (remaining > 0) {
+            messageEl.textContent = '您还有 ¥' + remaining.toFixed(2) + ' 可以分配';
+            messageEl.className = 'positive';
+        } else if (remaining < 0) {
+            messageEl.textContent = '您超支了 ¥' + Math.abs(remaining).toFixed(2);
+            messageEl.className = 'negative';
+        } else {
+            messageEl.textContent = '您的预算分配正好平衡';
+            messageEl.className = 'balanced';
+        }
+    };
+
+    // 初始化图表
+    this.initChart = function() {
+        console.log('初始化图表...');
+        var ctx = document.getElementById('spending-chart');
+        if (!ctx || !window.Chart) {
+            console.log('图表容器或Chart.js未找到');
+            return;
+        }
+        
+        ctx = ctx.getContext('2d');
+        
+        // 如果图表已经存在，先销毁它
+        if (this.chart) {
+            this.chart.destroy();
+        }
+        
+        this.chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['生活必需', '储蓄与投资', '想要'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1'],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                var value = context.parsed;
+                                var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+                                var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return context.label + ': ¥' + value.toFixed(2) + ' (' + percentage + '%)';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+        // 立即更新图表数据
+        this.updateChart();
+    };
+
+    // 更新图表
+    this.updateChart = function() {
+        if (this.chart) {
+            var totalNeeds = this.calculateNeeds();
+            var totalSavings = this.calculateSavings();
+            var totalWants = this.calculateWants();
+
+            this.chart.data.datasets[0].data = [totalNeeds, totalSavings, totalWants];
+            this.chart.update();
+        }
+    };
+
+    // 导出Excel
+    this.exportToExcel = function() {
+        console.log('导出Excel...');
+        
+        if (!window.XLSX) {
+            alert('Excel导出功能需要XLSX库支持');
+            return;
+        }
+        
+        var year = document.getElementById('year').value || '2025';
+        var workbook = XLSX.utils.book_new();
+
+        // 汇总数据
+        var summaryData = [
+            ['个人理财规划仪表盘', '', '', '', ''],
+            ['年份: ' + year, '', '', '', ''],
+            ['', '', '', '', ''],
+            ['类别', '理想分配金额', '目标', '实际', '总支出'],
+            ['生活必需', this.getElementText('ideal-needs'), '50%', this.getElementText('actual-needs-perc'), this.getElementText('total-needs')],
+            ['储蓄与投资', this.getElementText('ideal-savings'), '20%', this.getElementText('actual-savings-perc'), this.getElementText('total-savings')],
+            ['想要', this.getElementText('ideal-wants'), '30%', this.getElementText('actual-wants-perc'), this.getElementText('total-wants')],
+            ['总支出', '', '', '', this.getElementText('total-spend')],
+            ['', '', '', '', ''],
+            ['总收入', this.getElementText('total-income'), '', '', '']
+        ];
+
+        // 详细数据
+        var detailsData = [
+            ['', '', '', ''],
+            ['收入明细', '', '支出明细', ''],
+            ['项目', '金额', '项目', '金额']
+        ];
+
+        // 收入数据
+        var incomeRows = this.getTableData('.input-income');
+        var needsRows = this.getTableData('.input-needs');
+        var savingsRows = this.getTableData('.input-savings');
+        var wantsRows = this.getTableData('.input-wants');
+
+        var maxRows = Math.max(incomeRows.length, needsRows.length + savingsRows.length + wantsRows.length);
+
+        for (var i = 0; i < maxRows; i++) {
+            var row = ['', '', '', ''];
+            
+            if (i < incomeRows.length) {
+                row[0] = incomeRows[i].name;
+                row[1] = incomeRows[i].value;
+            }
+            
+            var expenseIndex = i;
+            var expenseCategory = '';
+            var expenseItem = null;
+            
+            if (expenseIndex < needsRows.length) {
+                expenseCategory = expenseIndex === 0 ? '生活必需' : '';
+                expenseItem = needsRows[expenseIndex];
+            } else {
+                expenseIndex -= needsRows.length;
+                if (expenseIndex < savingsRows.length) {
+                    expenseCategory = expenseIndex === 0 ? '储蓄与投资' : '';
+                    expenseItem = savingsRows[expenseIndex];
+                } else {
+                    expenseIndex -= savingsRows.length;
+                    if (expenseIndex < wantsRows.length) {
+                        expenseCategory = expenseIndex === 0 ? '想要' : '';
+                        expenseItem = wantsRows[expenseIndex];
+                    }
+                }
+            }
+            
+            if (expenseItem) {
+                row[2] = (expenseCategory ? expenseCategory + ' - ' : '') + expenseItem.name;
+                row[3] = expenseItem.value;
+            }
+            
+            detailsData.push(row);
+        }
+
+        // 合并数据
+        var allData = summaryData.concat(detailsData);
+
+        var worksheet = XLSX.utils.aoa_to_sheet(allData);
+        XLSX.utils.book_append_sheet(workbook, worksheet, '理财规划');
+
+        // 下载文件
+        XLSX.writeFile(workbook, '个人理财规划_' + year + '.xlsx');
+
+        // 显示成功消息
+        this.showMessage('Excel文件已导出成功！', 'success');
+    };
+
+    // 安全获取元素文本
+    this.getElementText = function(id) {
+        var element = document.getElementById(id);
+        return element ? element.textContent : '';
+    };
+
+    // 获取表格数据
+    this.getTableData = function(selector) {
+        var inputs = document.querySelectorAll(selector);
+        var data = [];
+        
+        for (var i = 0; i < inputs.length; i++) {
+            var input = inputs[i];
+            var row = input.closest('.table-row');
+            if (row) {
+                var nameInput = row.querySelector('input[type="text"]');
+                var name = nameInput ? nameInput.value.trim() : '';
+                var value = parseFloat(input.value) || 0;
+                
+                if (name && value > 0) {
+                    data.push({ name: name, value: value });
+                }
+            }
+        }
+        
+        return data;
+    };
+
+    // 一键清除所有数据和项目
+    this.clearData = function() {
+        console.log('清除数据...');
+        
+        if (confirm('确定要清除所有数据和项目吗？此操作不可恢复，将删除所有条目并重置为空状态。')) {
+            // 清空每个表格，只保留一个"添加新项"按钮
+            this.clearTable('#income-table', 'input-income');
+            this.clearTable('#needs-table', 'input-needs');
+            this.clearTable('#savings-table', 'input-savings');
+            this.clearTable('#wants-table', 'input-wants');
+
+            // 更新计算和图表
+            this.updateCalculations();
+            this.updateChart();
+            
+            this.showMessage('所有数据已清除！现在可以手动添加新项目。', 'success');
+        }
+    };
+
+    // 恢复默认设置
+    this.resetToDefaults = function() {
+        console.log('恢复默认设置...');
+        
+        if (confirm('确定要恢复到默认设置吗？这将覆盖当前所有数据。')) {
+            // 设置年份
+            var yearInput = document.getElementById('year');
+            if (yearInput) {
+                yearInput.value = this.defaultData.year;
+            }
+
+            // 恢复比例设置
+            document.getElementById('needs-ratio').value = this.defaultData.ratios.needs;
+            document.getElementById('wants-ratio').value = this.defaultData.ratios.wants;
+            document.getElementById('savings-ratio').value = this.defaultData.ratios.savings;
+
+            // 恢复各类别数据
+            this.setInputValues('#income-table', this.defaultData.income);
+            this.setInputValues('#needs-table', this.defaultData.needs);
+            this.setInputValues('#savings-table', this.defaultData.savings);
+            this.setInputValues('#wants-table', this.defaultData.wants);
+
+            // 更新计算和图表
+            this.updateCalculations();
+            this.updateChart();
+            
+            this.showMessage('已恢复到默认设置！', 'success');
+        }
+    };
+
+    // 清空指定表格
+    this.clearTable = function(tableSelector, inputClass) {
+        var table = document.querySelector(tableSelector);
+        if (!table) return;
+        
+        var tableBody = table.querySelector('.table-body');
+        if (!tableBody) return;
+        
+        // 清空表格内容
+        tableBody.innerHTML = '';
+        
+        // 添加一个"添加新项"按钮行
+        var buttonRow = document.createElement('div');
+        buttonRow.className = 'table-row';
+        
+        var addButton = document.createElement('button');
+        addButton.className = 'add-item-btn';
+        addButton.textContent = '+ 添加新项';
+        
+        buttonRow.appendChild(addButton);
+        tableBody.appendChild(buttonRow);
+    };
+
+    // 保存设置
+    this.saveSettings = function() {
+        console.log('保存设置...');
+        
+        try {
+            var settings = {
+                year: document.getElementById('year').value,
+                ratios: {
+                    needs: parseFloat(document.getElementById('needs-ratio').value) || 50,
+                    wants: parseFloat(document.getElementById('wants-ratio').value) || 30,
+                    savings: parseFloat(document.getElementById('savings-ratio').value) || 20
+                },
+                income: this.getInputValues('#income-table'),
+                needs: this.getInputValues('#needs-table'),
+                savings: this.getInputValues('#savings-table'),
+                wants: this.getInputValues('#wants-table')
+            };
+
+            // 使用变量存储而不是localStorage（Claude.ai限制）
+            this.savedSettings = settings;
+            this.showMessage('设置已保存！', 'success');
+        } catch (e) {
+            console.error('保存设置失败:', e);
+            this.showMessage('保存失败', 'error');
+        }
+    };
+
+    // 从存储加载设置
+    this.loadSettings = function() {
+        console.log('加载设置...');
+        
+        try {
+            // 先尝试从变量加载，如果没有则使用默认数据
+            var settings = this.savedSettings || this.defaultData;
+            
+            // 恢复年份
+            if (settings.year) {
+                var yearInput = document.getElementById('year');
+                if (yearInput) {
+                    yearInput.value = settings.year;
+                }
+            }
+
+            // 恢复比例设置
+            if (settings.ratios) {
+                document.getElementById('needs-ratio').value = settings.ratios.needs || 50;
+                document.getElementById('wants-ratio').value = settings.ratios.wants || 30;
+                document.getElementById('savings-ratio').value = settings.ratios.savings || 20;
+            }
+
+            // 恢复各类别数据
+            this.setInputValues('#income-table', settings.income);
+            this.setInputValues('#needs-table', settings.needs);
+            this.setInputValues('#savings-table', settings.savings);
+            this.setInputValues('#wants-table', settings.wants);
+
+            console.log('设置加载成功');
+        } catch (e) {
+            console.error('加载设置失败:', e);
+        }
+    };
+
+    // 获取表格输入值
+    this.getInputValues = function(tableSelector) {
+        var table = document.querySelector(tableSelector);
+        if (!table) return [];
+        
+        var rows = table.querySelectorAll('.table-row');
+        var values = [];
+
+        for (var i = 0; i < rows.length; i++) {
+            var row = rows[i];
+            var textInput = row.querySelector('input[type="text"]');
+            var numberInput = row.querySelector('input[type="number"]');
+            
+            // 跳过按钮行
+            if (!textInput || !numberInput) continue;
+            
+            values.push({
+                text: textInput.value,
+                number: numberInput.value
+            });
+        }
+
+        return values;
+    };
+
+    // 设置表格输入值
+    this.setInputValues = function(tableSelector, values) {
+        if (!values) return;
+
+        var table = document.querySelector(tableSelector);
+        if (!table) return;
+        
+        var tableBody = table.querySelector('.table-body');
+        if (!tableBody) return;
+
+        // 清空现有内容
+        tableBody.innerHTML = '';
+
+        // 添加数据行
+        for (var i = 0; i < values.length; i++) {
+            var row = document.createElement('div');
+            row.className = 'table-row';
+            
+            var textInput = document.createElement('input');
+            textInput.type = 'text';
+            textInput.value = values[i].text || '';
+            
+            var numberInput = document.createElement('input');
+            numberInput.type = 'number';
+            numberInput.value = values[i].number || '';
+            
+            // 设置正确的类名
+            var tableId = table.id;
+            if (tableId === 'income-table') {
+                numberInput.className = 'input-income';
+            } else if (tableId === 'needs-table') {
+                numberInput.className = 'input-needs';
+            } else if (tableId === 'savings-table') {
+                numberInput.className = 'input-savings';
+            } else if (tableId === 'wants-table') {
+                numberInput.className = 'input-wants';
+            }
+            
+            row.appendChild(textInput);
+            row.appendChild(numberInput);
+            tableBody.appendChild(row);
+        }
+
+        // 添加按钮行
+        var buttonRow = document.createElement('div');
+        buttonRow.className = 'table-row';
+        
+        var addButton = document.createElement('button');
+        addButton.className = 'add-item-btn';
+        addButton.textContent = '+ 添加新项';
+        
+        buttonRow.appendChild(addButton);
+        tableBody.appendChild(buttonRow);
+    };
+
+    // 显示消息
+    this.showMessage = function(message, type) {
+        type = type || 'info';
+        
+        var messageBox = document.getElementById('config-message');
+        if (messageBox) {
+            messageBox.textContent = message;
+            messageBox.className = 'message-box ' + type;
+            messageBox.style.display = 'block';
+
+            setTimeout(function() {
+                messageBox.style.display = 'none';
+            }, 3000);
+        } else {
+            // 如果没有消息框，使用alert作为后备
+            alert(message);
+        }
+    };
+
+    // 自动初始化
+    this.init();
+};
+
+// 页面加载完成后初始化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM加载完成，初始化理财仪表盘...');
+    if (!window.financeApp) {
+        window.financeApp = new FinanceDashboard();
+    }
+});
+
+// 如果DOM已经加载完成，立即初始化
+if (document.readyState === 'loading') {
+    // DOM还在加载中，等待DOMContentLoaded事件
+} else {
+    // DOM已经加载完成，立即初始化
+    console.log('DOM已加载，立即初始化理财仪表盘...');
+    if (!window.financeApp) {
+        window.financeApp = new FinanceDashboard();
+    }
+}
+    </script>
+</body>
+</html>
